@@ -12,7 +12,7 @@ namespace Projet_Partie_I
     {
         public int RetraitMax = 1000;
         public int NombreRetraitMax = 9;
-        public Dictionary<int, List<decimal>> transaction;
+        public List<int> transaction;
         public Dictionary<int, decimal> compte;
 
         public TransactionBancaire(string acctPath, string trxnPath)
@@ -23,27 +23,26 @@ namespace Projet_Partie_I
 
             // Ecriture du fichier dans un dictionnaire.
 
-            transaction = new Dictionary<int, List<decimal>>();
-            List<decimal> transactionInfo = new List<decimal>();
+            transaction = new List<int>();
 
 
             for (int i = 0; i < transactionLines.Length; i++)
             {
                 string[] split = transactionLines[i].Split(';');
                 int numeroTrans = int.Parse(split[0]);
-                decimal montant = decimal.Parse(split[1]);
-                decimal compteExpediteur = decimal.Parse(split[2]);
-                decimal compteDestinataire = decimal.Parse(split[3]);
+                int montant = int.Parse(split[1].Replace('.', ','));
+                int compteExpediteur = int.Parse(split[2]);
+                int compteDestinataire = int.Parse(split[3]);
 
                 //Ajout de chaque champs dans la liste du dictionnaire
-                if (!transaction.ContainsKey(numeroTrans))
-                {
-                    transaction.Add(numeroTrans, new List<decimal>());
-                    transaction[numeroTrans].Add(montant);
-                    transaction[numeroTrans].Add(compteExpediteur);
-                    transaction[numeroTrans].Add(compteDestinataire);
-                }
-               }
+                //if (!transaction.ContainsKey(numeroTrans))
+                //{
+                transaction.Add(numeroTrans);
+                transaction.Add(montant);
+                transaction.Add(compteExpediteur);
+                transaction.Add(compteDestinataire);
+                //}
+            }
 
             // Lecture du fichier d'entré : compte.
             string[] compteLines = File.ReadAllLines(acctPath);
@@ -55,7 +54,7 @@ namespace Projet_Partie_I
             {
                 string[] split = compteLines[i].Split(';');
                 int numeroCompte = int.Parse(split[0]);
-                decimal solde = !string.IsNullOrEmpty(split[1]) ? decimal.Parse(split[1].Replace('.',',')) : 0;
+                decimal solde = !string.IsNullOrEmpty(split[1]) ? decimal.Parse(split[1].Replace('.', ',')) : 0;
                 if (!compte.ContainsKey(numeroCompte))
                 {
                     compte.Add(numeroCompte, solde);
@@ -68,14 +67,14 @@ namespace Projet_Partie_I
         // Vérification si un dépot est possible.
         public bool DepotEstPossible(int numeroTrans)
         {
-            int numeroCompte = (int)transaction[numeroTrans][2];
+            int numeroCompte = (int)transaction[3];
             decimal soldeCompte = decimal.MinValue;
 
             if (compte.ContainsKey(numeroCompte))
             {
                 soldeCompte = compte[numeroCompte];
             }
-            if (transaction[numeroTrans][0] > 0 && soldeCompte >= 0 )
+            if (transaction[1] > 0 && soldeCompte >= 0)
             {
                 return true;
             }
@@ -87,7 +86,7 @@ namespace Projet_Partie_I
 
         public bool RetraitEstPossible(int numeroTrans)
         {
-            int numeroCompte = (int)transaction[numeroTrans][1];
+            int numeroCompte = (int)transaction[2];
             decimal soldeCompte;
 
             if (compte.ContainsKey(numeroCompte))
@@ -98,13 +97,25 @@ namespace Projet_Partie_I
             {
                 return false;
             }
-            if (transaction[numeroTrans][0] > 0 && transaction[numeroTrans][0] <= RetraitMax && transaction[numeroTrans][0] <= soldeCompte)
+            if (transaction[1] > 0 && transaction[1] <= RetraitMax && transaction[1] <= soldeCompte)
             {
                 return true;
             }
             return false;
         }
 
+        // Vérification du retrait maximum pour un virement.
+         
+        public bool RetraitMaxCumule(int numeroCompte)
+        {
+            int compteurRetrait = 0;
+            decimal cumulRetrait = 0;
+
+            for (int i = 0; i < compte.Count; i++)
+            {
+
+            }
+        }
 
         // Vérification si un virement est possible.
         public bool VirementEstPossible(int numeroTrans)
@@ -121,15 +132,14 @@ namespace Projet_Partie_I
         }
 
         // Test du statut de la transaction et ecriture du fichier de sortie.
-        public void StatutTransaction(string sttsPath)
+        public void StatutTransaction(int numeroTrans , string sttsPath)
         {
             using (StreamWriter writer = new StreamWriter(sttsPath))
                 foreach (var item in transaction)
                 {
 
-                    int numeroTrans = item.Key;
-                    int numeroCompteExp = (int)transaction[numeroTrans][1];
-                    int numeroCompteDesti = (int)transaction[numeroTrans][2];
+                    int numeroCompteExp = (int)transaction[2];
+                    int numeroCompteDesti = (int)transaction[3];
                     decimal soldeCompteExp = decimal.MinValue;
                     decimal soldeCompteDesti = decimal.MinValue;
                     if (compte.ContainsKey(numeroCompteExp))
@@ -142,7 +152,7 @@ namespace Projet_Partie_I
                     }
                     // Vérification pour un dépôt.
 
-                    if (transaction[numeroTrans][1] == 0 && transaction[numeroTrans][2] != 0)
+                    if (transaction[2] == 0 && transaction[3] != 0)
                     {
                         if (!DepotEstPossible(numeroTrans))
                         {
@@ -151,12 +161,12 @@ namespace Projet_Partie_I
                         else
                         {
                             writer.WriteLine($"{numeroTrans};OK");
-                            soldeCompteDesti += transaction[numeroTrans][0];
+                            soldeCompteDesti += transaction[1];
                         }
                     }
 
                     // Vérification pour un retrait.
-                    if (transaction[numeroTrans][1] != 0 && transaction[numeroTrans][2] == 0)
+                    if (transaction[2] != 0 && transaction[3] == 0)
                     {
                         if (!RetraitEstPossible(numeroTrans))
                         {
@@ -165,27 +175,27 @@ namespace Projet_Partie_I
                         else
                         {
                             writer.WriteLine($"{numeroTrans};OK");
-                            soldeCompteExp -= transaction[numeroTrans][0];
+                            soldeCompteExp -= transaction[1];
                         }
 
                     }
 
                     // Vérification pour un virement/prélèvement.
 
-                    if (transaction[numeroTrans][1] != 0 && transaction[numeroTrans][2] != 0)
+                    if (transaction[2] != 0 && transaction[3] != 0)
                     {
                         if (DepotEstPossible(numeroTrans) && RetraitEstPossible(numeroTrans))
                         {
                             writer.WriteLine($"{numeroTrans};OK");
-                            soldeCompteDesti += transaction[numeroTrans][0];
-                            soldeCompteExp -= transaction[numeroTrans][0];
+                            soldeCompteDesti += transaction[1];
+                            soldeCompteExp -= transaction[1];
                         }
                         else
                         {
                             writer.WriteLine($"{numeroTrans};KO");
                         }
                     }
-                    if (transaction[numeroTrans][1] == 0 && transaction[numeroTrans][2] == 0)
+                    if (transaction[2] == 0 && transaction[3] == 0)
                     {
                         writer.WriteLine($"{numeroTrans};KO");
                     }
