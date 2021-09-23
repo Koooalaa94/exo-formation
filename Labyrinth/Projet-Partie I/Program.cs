@@ -15,7 +15,14 @@ namespace Projet_Partie_I
             string acctPath = path + @"\Comptes_1.txt";
             string trxnPath = path + @"\Transactions_1.txt";
             string sttsPath = path + @"\Statut_1.txt";
-            CompteBancaire.TransactionBancaires(acctPath, trxnPath, sttsPath);
+            TransactionBancaire tB = new TransactionBancaire(acctPath, trxnPath);
+            tB.StatutTransaction(sttsPath);
+
+
+            // Keep the console window open
+            Console.WriteLine("----------------------");
+            Console.WriteLine("Press any key to exit.");
+            Console.ReadKey();
         }
     }
 }
